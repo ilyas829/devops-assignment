@@ -125,26 +125,7 @@ No manual intervention needed
 Health Check
 Backend includes /health endpoint for monitoring:
 
-python
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-Troubleshooting
-Issue	Command to Debug
-Containers not running	docker-compose ps
-WebSocket failing	docker logs chat-nginx | grep upgrade
-Backend unreachable	docker exec chat-nginx ping backend
-Frontend 404	docker exec chat-nginx ls /usr/share/nginx/html
-Permission denied	groups | grep docker
-Technologies Used
-Component	Technology
-Backend	FastAPI + Uvicorn
-Frontend	HTML5/CSS3/JavaScript
-Reverse Proxy	Nginx (Alpine)
-Containerization	Docker + Docker Compose
-Cloud	AWS EC2 (t2.micro)
-CI/CD	GitHub Actions
-OS	Ubuntu 22.04 LTS
+
 Live URL: http://54.172.238.35
 
 
