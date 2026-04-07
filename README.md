@@ -1,51 +1,69 @@
-# DevOps Engineering Assignment: Real-Time Chat App
+# Real-time WebSocket Chat Application
 
-Welcome! In this assignment, you are tasked with fixing a broken staging environment for our Real-Time Chat web application. 
+## Project Overview
+A real-time multi-user chat application using FastAPI WebSockets, containerized with Docker, reverse proxied with Nginx, and deployed on AWS EC2 with automated CI/CD.
 
-A junior developer recently attempted to containerize this application using Docker and NGINX, but the deployment is currently failing on multiple fronts. Your job is to debug their configuration files and get the application fully operational via Docker Compose.
+## Live Application
+**Public IP**: `http://54.172.238.35`
 
-## System Architecture
+## Architecture
+┌──────────────────────────────────────────────────────────────┐
+│                        User Browser                          │
+│                    http://54.172.238.35                      │
+└─────────────────────────────┬────────────────────────────────┘
+                              │ HTTP / WebSocket
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     AWS EC2 Instance                         │
+│                      (54.172.238.35)                         │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │                    Docker Host                         │  │
+│  │                                                        │  │
+│  │   ┌──────────────────┐       ┌───────────────────────┐ │  │
+│  │   │     NGINX        │       │    Backend Service    │ │  │
+│  │   │    Container     │       │   (FastAPI + WS)      │ │  │
+│  │   │                  │       │                       │ │  │
+│  │   │  Port: 80        │─────▶│  Port: 8000           │ │  │
+│  │   │                  │       │                       │ │  │
+│  │   │  Responsibilities│       │  Endpoints:           │ │  │
+│  │   │  - Serve frontend│       │  - /health            │ │  │
+│  │   │  - Reverse proxy │       │  - /ws (WebSocket)    │ │  │
+│  │   │  - WS upgrade    │       │                       │ │  │
+│  │   └──────────────────┘       └───────────────────────┘ │  │
+│  │                                                        │  │
+│  │        Docker Bridge Network: chat-network             │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
 
-The application is built using two primary containers:
-1. **Backend (`backend`)**: A Python-based FastAPI server operating on Port 8000. It handles persistent, real-time WebSocket connections on the `/ws` endpoint.
-2. **Frontend Proxy (`nginx`)**: An NGINX container mapped to Port 80. It is responsible for serving the static files from the `frontend/` directory, while simultaneously intercepting and reverse-proxying all WebSocket upgrade requests down to the backend container.
 
-### Directory Structure
-```text
-realtime-chat-app/
-├── app/
-│   ├── main.py              # FastAPI application server
-│   └── requirements.txt     # Python dependencies
-├── frontend/
-│   └── index.html           # Simple, styled single-page HTML client
-├── Dockerfile               # Instructions to build the Python backend image
-├── docker-compose.yml       # Composes both NGINX and Python Backend services
-└── nginx.conf               # Configuration for NGINX routing and WS proxy
-```
+WebSocket Flow:
+1. Client → GET /ws (Upgrade: websocket)
+2. NGINX → forwards to backend:8000/ws
+3. Backend → accepts upgrade
+4. Persistent bidirectional connection established
 
-## Your Mission
+## Docker Setup
 
-If you run `docker-compose up -d --build` right now, the containers will start, but the application will not work. You need to debug and fix the following three critical issues:
+### Container Configuration
+- **Backend Container**: Python 3.11 with FastAPI, runs on port 8000
+- **Nginx Container**: Alpine Linux, serves frontend and proxies WebSocket
 
-### 1. Fix the Docker Binding (Container Networking)
-The FastAPI backend container is refusing external connections—even from the NGINX container! 
-* **Hint:** Look at how the `uvicorn` command is binding its host in the `Dockerfile`. Inside a Docker container, binding to `localhost` or `127.0.0.1` makes the service unreachable to other containers on the Docker network.
+### Docker Networking
+Custom bridge network `chat-network` enables:
+- Container name resolution (backend:8000)
+- Isolated communication between services
+- No port exposure to host except through Nginx
 
-### 2. Fix the Missing User Interface (Volume Mounts)
-If you navigate to `http://localhost` right now, you will likely see the default "Welcome to NGINX" page instead of the chat application.
-* **Hint:** Check `docker-compose.yml`. How is the `nginx` container supposed to get access to the static HTML files located in the local `frontend/` directory? 
+### Auto-restart
+Both containers have `restart: always` policy for production resilience.
 
-### 3. Fix the WebSocket Tunnel (Reverse Proxy Configuration)
-Once the UI is visible, the chat app will continuously say "Disconnected" because the WebSocket handshake is failing.
-* **Hint #1:** In `nginx.conf`, the `proxy_pass` is attempting to route to `localhost:8000`. Does `localhost` mean the same thing inside the NGINX container as it does on your laptop? How do containers communicate with each other in a Compose network?
-* **Hint #2:** NGINX requires explicit headers to convert standard HTTP traffic into a persistent WebSocket tunnel. Some of the required `Upgrade` headers appear to be missing or disabled.
+## Nginx Reverse Proxy
 
-## Deliverables
-
-Submit your finalized, corrected codebase. We will evaluate your submission by executing:
-
-```bash
-docker-compose up -d --build
-```
-
-If everything is configured correctly, we should instantly see the UI and be able to open multiple browser tabs at `http://localhost` to chat back and forth in real-time. Good luck!
+### Configuration Highlights
+```nginx
+location /ws {
+    proxy_pass http://backend:8000/ws;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
