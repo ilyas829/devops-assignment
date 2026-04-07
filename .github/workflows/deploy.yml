@@ -13,16 +13,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     
+    - name: Install SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+    
     - name: Deploy to EC2
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        script: |
-          cd ~/realtime-chat-app
+      run: |
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd ~/devops-assignment
           git pull origin main
-          docker-compose down
-          docker-compose up -d --build
-          docker system prune -f
+          sudo docker-compose down
+          sudo docker-compose up -d --build
+          sudo docker system prune -f
+          sudo docker ps
+        EOF
