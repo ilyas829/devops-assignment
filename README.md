@@ -7,41 +7,7 @@ A real-time multi-user chat application using FastAPI WebSockets, containerized 
 **Public IP**: `http://54.172.238.35`
 
 ## Architecture
-┌──────────────────────────────────────────────────────────────┐
-│                        User Browser                          │
-│                    http://54.172.238.35                      │
-└─────────────────────────────┬────────────────────────────────┘
-                              │ HTTP / WebSocket
-                              ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     AWS EC2 Instance                         │
-│                      (54.172.238.35)                         │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │                    Docker Host                         │  │
-│  │                                                        │  │
-│  │   ┌──────────────────┐       ┌───────────────────────┐ │  │
-│  │   │     NGINX        │       │    Backend Service    │ │  │
-│  │   │    Container     │       │   (FastAPI + WS)      │ │  │
-│  │   │                  │       │                       │ │  │
-│  │   │  Port: 80        │─────▶│  Port: 8000           │ │  │
-│  │   │                  │       │                       │ │  │
-│  │   │  Responsibilities│       │  Endpoints:           │ │  │
-│  │   │  - Serve frontend│       │  - /health            │ │  │
-│  │   │  - Reverse proxy │       │  - /ws (WebSocket)    │ │  │
-│  │   │  - WS upgrade    │       │                       │ │  │
-│  │   └──────────────────┘       └───────────────────────┘ │  │
-│  │                                                        │  │
-│  │        Docker Bridge Network: chat-network             │  │
-│  └────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
-
-
-WebSocket Flow:
-1. Client → GET /ws (Upgrade: websocket)
-2. NGINX → forwards to backend:8000/ws
-3. Backend → accepts upgrade
-4. Persistent bidirectional connection established
+<img width="1440" height="1312" alt="image" src="https://github.com/user-attachments/assets/9a208f14-202f-4339-9c72-2bcab488a48e" />
 
 ## Docker Setup
 
