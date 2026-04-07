@@ -4,9 +4,12 @@ services:
   backend:
     build: .
     container_name: chat-backend
+    restart: always
+    # Fix: Add explicit network
+    networks:
+      - chat-network
     expose:
       - "8000"
-    restart: always
 
   nginx:
     image: nginx:alpine
@@ -14,9 +17,17 @@ services:
     ports:
       - "80:80"
     volumes:
-      # TODO: Candidates need to map the frontend directory correctly to serve the HTML
-      # - ./frontend:/usr/share/nginx/html:ro
+      # Fix: Uncomment and correct frontend mounting
+      - ./frontend:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
     restart: always
+    # Fix: Add explicit network
+    networks:
+      - chat-network
+
+# Fix: Define custom network for better container communication
+networks:
+  chat-network:
+    driver: bridge
